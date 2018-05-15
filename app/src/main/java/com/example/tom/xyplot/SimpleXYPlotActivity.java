@@ -3,6 +3,7 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
@@ -55,6 +56,8 @@ public class SimpleXYPlotActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        btAdapter = BluetoothAdapter.getDefaultAdapter();       // get Bluetooth adapter
+        checkBTState();
         // Set up a pointer to the remote node using it's address.
         BluetoothDevice device = btAdapter.getRemoteDevice(address);
 
@@ -147,6 +150,23 @@ public class SimpleXYPlotActivity extends Activity {
 
     }
 
+    private void checkBTState() {
+        // Check for Bluetooth support and then check to make sure it is turned on
+        // Emulator doesn't support Bluetooth and will return null
+        if(btAdapter==null) {
+            errorExit("Fatal Error", "Bluetooth not support");
+        } else {
+            if (btAdapter.isEnabled()) {
+
+                Toast.makeText(this, "BtOn", Toast.LENGTH_SHORT);
+            } else {
+                //Prompt user to turn on Bluetooth
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, 1);
+            }
+        }
+    }
+
     private void errorExit(String title, String message){
         Toast.makeText(getBaseContext(), title + " - " + message, Toast.LENGTH_LONG).show();
         finish();
@@ -202,7 +222,7 @@ public class SimpleXYPlotActivity extends Activity {
         private static final int SAMPLE_SIZE = 31;
         private MyObservable notifier;
         private boolean keepRunning = false;
-        private byte[] buffer = new byte[256];  // buffer store for the stream
+        private byte[] buffer = new byte[10];  // buffer store for the stream
         private float inByte = 0;
         private float height = 0, height_new = 0;
 
@@ -214,7 +234,7 @@ public class SimpleXYPlotActivity extends Activity {
             keepRunning = false;
         }
 
-        @Override
+        //@Override
         public void run() {
             try {
                 keepRunning = true;
@@ -223,18 +243,18 @@ public class SimpleXYPlotActivity extends Activity {
                 // Keep listening to the InputStream until an exception occurs
                 while (keepRunning) {
                     try {
+                        //Thread.sleep(10);
                         // Read from the InputStream
                         bytes = mmInStream.read(buffer);        // Get number of bytes and message in "buffer"
                         String str = new String(buffer, StandardCharsets.UTF_8);
-                        String inString = str.trim();
-                        inByte = Float.parseFloat(inString);
-                        /*if (inString.equals("!"))
-                            inByte = 512;
-                        else
-                            inByte = Float.parseFloat(inString);
-                        inByte = map(inByte,0, 1023, 0, height);
-                        height_new = height - inByte;*/
+                        //System.out.println(str);
+                        str = str.replace(System.getProperty("line.separator"), " ");
 
+                        String inString = str.trim();
+                        String[] array = inString.split(" ");
+                        //Toast.makeText(SimpleXYPlotActivity.this, array[0], Toast.LENGTH_SHORT).show();
+                        System.out.println(array[0]);
+                        inByte = Float.parseFloat(array[0]);
                     } catch (IOException e) {
                         break;
                     }
@@ -259,9 +279,8 @@ public class SimpleXYPlotActivity extends Activity {
 
         public Number getY(int series, int index) {
             float screenY = inByte;
-            XYPlot plot = null;
-            Number y = plot.screenToSeriesY(screenY);
-            return y;
+
+            return (int)screenY;
         }
 
         /* public final float map(float value,
